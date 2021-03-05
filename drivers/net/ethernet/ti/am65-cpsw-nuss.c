@@ -1822,7 +1822,7 @@ static int am65_cpsw_nuss_init_slave_ports(struct am65_cpsw_common *common)
 	if (!node)
 		return -ENOENT;
 
-	for_each_child_of_node(node, port_np) {
+	for_each_available_child_of_node(node, port_np) {
 		struct am65_cpsw_port *port;
 		const void *mac_addr;
 		u32 port_id;
@@ -2641,7 +2641,7 @@ static int am65_cpsw_nuss_probe(struct platform_device *pdev)
 	node = of_get_child_by_name(dev->of_node, "ethernet-ports");
 	if (!node)
 		return -ENOENT;
-	common->port_num = of_get_child_count(node);
+	common->port_num = of_get_available_child_count(node);
 	if (common->port_num < 1 || common->port_num > AM65_CPSW_MAX_PORTS)
 		return -ENOENT;
 	of_node_put(node);

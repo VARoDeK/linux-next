@@ -522,6 +522,7 @@
 				label = "port2";
 				phys = <&phy_gmii_sel 2>;
 				mac-address = [00 01 de ad be ef];
+				status = "disabled";
 			};
 		};
 

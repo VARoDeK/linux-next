@@ -107,6 +107,7 @@
 	mdio_mux: mux-controller {
 		compatible = "gpio-mux";
 		#mux-control-cells = <0>;
+		status = "disabled";
 
 		mux-gpios = <&exp1 12 GPIO_ACTIVE_HIGH>;
 	};
@@ -117,6 +118,7 @@
 		mdio-parent-bus = <&cpsw3g_mdio>;
 		#address-cells = <1>;
 		#size-cells = <0>;
+		status = "disabled";
 
 		mdio@1 {
 			reg = <0x1>;
