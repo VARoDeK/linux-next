@@ -28,6 +28,12 @@
 #include <crypto/sha1.h>
 #include <crypto/sha2.h>
 
+/* Testing: for atomic count */
+#include <asm/atomic.h>
+#include <asm/io.h>
+#include <linux/delay.h>
+void __iomem *reg_base;
+
 #include "sa2ul.h"
 
 /* Byte offset for key in encryption security context */
@@ -68,6 +74,9 @@
 
 /* Max Authentication tag size */
 #define SA_MAX_AUTH_TAG_SZ 64
+
+/* Testing: atomic count to cont number of requests submitted at once to dma*/
+atomic_t req_count = ATOMIC_INIT(0);
 
 enum sa_algo_id {
 	SA_ALG_CBC_AES = 0,
@@ -1043,6 +1052,11 @@ static void sa_aes_dma_in_callback(void *data)
 	__be32 *mdptr;
 	size_t ml, pl;
 	int i;
+	unsigned int j;
+
+	j = readl(reg_base);
+	if(j)
+		mdelay(1000);
 
 	sa_sync_from_device(rxd);
 	req = container_of(rxd->req, struct skcipher_request, base);
@@ -1059,6 +1073,10 @@ static void sa_aes_dma_in_callback(void *data)
 	sa_free_sa_rx_data(rxd);
 
 	skcipher_request_complete(req, 0);
+
+	atomic_dec(&req_count);
+	printk("====== Testing: %d : %s : Count %d", __LINE__, __func__,
+		atomic_read(&req_count));
 }
 
 static void
@@ -1280,6 +1298,10 @@ static int sa_run(struct sa_req *req)
 
 	dma_async_issue_pending(dma_rx);
 	dma_async_issue_pending(pdata->dma_tx);
+
+	atomic_inc(&req_count);
+	printk("====== Testing: %d : %s : Count %d", __LINE__, __func__,
+		atomic_read(&req_count));
 
 	return -EINPROGRESS;
 
@@ -2441,6 +2463,8 @@ static int sa_ul_probe(struct platform_device *pdev)
 
 	device_for_each_child(&pdev->dev, &pdev->dev, sa_link_child);
 
+	reg_base = ioremap(0x43004080, 0x4);
+
 	return 0;
 
 release_dma:
@@ -2475,6 +2499,8 @@ static int sa_ul_remove(struct platform_device *pdev)
 
 	pm_runtime_put_sync(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
+
+	iounmap((volatile void*) 0x43004080);
 
 	return 0;
 }
