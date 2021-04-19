@@ -33,6 +33,10 @@
 #include "k3-udma.h"
 #include "k3-psil-priv.h"
 
+/* Testing for SA2UL */
+#include <asm/io.h>
+void __iomem *reg_base;
+
 struct udma_static_tr {
 	u8 elsize; /* RPSTR0 */
 	u16 elcnt; /* RPSTR0 */
@@ -1130,6 +1134,31 @@ static irqreturn_t udma_ring_irq_handler(int irq, void *data)
 	struct udma_chan *uc = data;
 	struct udma_desc *d;
 	dma_addr_t paddr = 0;
+	unsigned int j, k;
+
+	j = readl(reg_base);
+
+	if(j!=0){
+		disable_irq_nosync(irq);
+		k=0;
+
+		while(k++ < 1000){
+		       if (udma_pop_from_ring(uc, &paddr) || !paddr){
+				if(k!=1)
+					continue;
+			}
+
+			d = udma_udma_desc_from_paddr(uc, paddr);
+			if(d){
+				uc->bcnt += d->residue;
+				udma_start(uc);
+				vchan_cookie_complete(&d->vd);
+			}
+		}
+
+		enable_irq(irq);
+		return IRQ_HANDLED;
+	}
 
 	if (udma_pop_from_ring(uc, &paddr) || !paddr)
 		return IRQ_HANDLED;
@@ -5166,6 +5195,8 @@ static int udma_probe(struct platform_device *pdev)
 	const struct of_device_id *match;
 	int i, ret;
 	int ch_count;
+
+	reg_base = ioremap(0x43004080, 0x4);
 
 	ret = dma_coerce_mask_and_coherent(dev, DMA_BIT_MASK(48));
 	if (ret)
